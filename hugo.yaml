@@ -1,0 +1,32 @@
+baseURL: 'https://example.org/'
+languageCode: 'en-us'
+title: 'yawkar-shards'
+theme: 'hugo-theme-console'
+
+params:
+  # Cutting off the page title to two chars for mobile (console-demo -> co)
+  titleCutting: false
+
+  # Set the animation style -- https://animate.style/
+  # To disable animations, please remove or comment animationStyle parameter
+  animateStyle: "animated zoomIn fast" 
+
+  navlinks:
+    - name: "posts/"
+      url: "posts/"
+
+markup:
+  highlight:
+    anchorLineNos: true
+    lineAnchors: ''
+    codeFences: true
+    guessSyntax: false
+    hl_Lines: ''
+    hl_inline: false
+    lineNoStart: 1
+    lineNos: true
+    lineNumbersInTable: false
+    noClasses: false
+    noHl: false
+    tabWidth: 4
+    wrapperClass: 'highlight'
