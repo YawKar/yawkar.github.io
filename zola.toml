@@ -1,6 +1,6 @@
 base_url = "https://yawkar.github.io"
 title = "yawkar's blog"
-description = "yawkar's personal blog"
+description = "software, linux, nix, cats... what?"
 theme = "zola-zap"
 
 compile_sass = false
