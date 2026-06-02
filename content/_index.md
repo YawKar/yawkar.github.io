@@ -24,7 +24,7 @@ Hey! You're welcome to know me better through my posts here =]
 
 - [mail:yawkarpov@gmail.com](mailto:yawkarpov@gmail.com)
 - [github:yawkar](https://github.com/yawkar)
-- [telegram:@yawkar](https://yawkar.t.me)
+- [telegram:@yawkar](https://t.me/yawkar)
 
 <script>
     const birthDate = new Date("2003-02-27");

@@ -18,7 +18,10 @@
             nativeBuildInputs = with pkgs; [
               just
               pre-commit
+              nixfmt
+              statix
               zola
+              lychee
             ];
 
             shellHook = ''

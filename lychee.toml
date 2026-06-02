@@ -1,0 +1,12 @@
+extensions = ["md"]
+exclude_path = [
+  "./themes",
+  "./public",
+  "./sass",
+  "./templates",
+  "./static",
+]
+include_mail = true
+exclude_all_private = true
+archive = "wayback"
+suggest = true
