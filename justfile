@@ -19,7 +19,7 @@ lint fix="":
     # nix
     statix {{ if fix != "" { "fix" } else { "check" } }}
     # lychee: dead links
-    lychee .
+    lychee -v .
 [group("Code Style")]
 lint-fix: (lint "fix")
 
