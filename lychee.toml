@@ -10,3 +10,4 @@ include_mail = true
 exclude_all_private = true
 archive = "wayback"
 suggest = true
+timeout = 1
