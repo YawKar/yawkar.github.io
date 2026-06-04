@@ -8,7 +8,7 @@ images = []
 
 # Home
 
-Hey! You're welcome to know me better through my posts here =]
+Hey! Feel free to get to know me through my posts here =]
 
 ## whoami
 
@@ -20,7 +20,7 @@ Hey! You're welcome to know me better through my posts here =]
   - ⚙️ Systems programming 
   - ❄️ Nix/NixOS 
 
-## Ways to reach me out
+## Ways to reach out to me
 
 - [mail:yawkarpov@gmail.com](mailto:yawkarpov@gmail.com)
 - [github:yawkar](https://github.com/yawkar)
