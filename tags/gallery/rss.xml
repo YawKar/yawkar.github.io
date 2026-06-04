@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+      <title>yawkar&#x27;s blog - gallery</title>
+      <link>https://yawkar.github.io</link>
+      <description>software, linux, nix, cats... what?</description>
+      <generator>Zola</generator>
+      <language>en</language>
+      <atom:link href="https://yawkar.github.io/tags/gallery/rss.xml" rel="self" type="application/rss+xml"/>
+      <lastBuildDate>Sun, 15 Feb 2026 00:00:00 +0000</lastBuildDate>
+      <item>
+          <title>[Gallery] DOSBox: Hello, Yawkar</title>
+          <pubDate>Sun, 15 Feb 2026 00:00:00 +0000</pubDate>
+          <author>Unknown</author>
+          <link>https://yawkar.github.io/gallery/msdos-avatar/</link>
+          <guid>https://yawkar.github.io/gallery/msdos-avatar/</guid>
+          <description xml:base="https://yawkar.github.io/gallery/msdos-avatar/">&lt;p&gt;
+
+
+
+&lt;img alt=&quot;DOSBox window with printed out &amp;#x27;Hello, Yawkar&amp;#x27;&quot; title=&quot;DOSBox window with printed out &amp;#x27;Hello, Yawkar&amp;#x27;&quot; src=&quot;https:&#x2F;&#x2F;yawkar.github.io&#x2F;processed_images&#x2F;1.56329f98acf64792.png&quot; srcset=&quot;&quot; class=&quot;&quot; &#x2F;&gt;
+
+
+Original author: Zarina Sharipova.&lt;&#x2F;p&gt;
+</description>
+      </item>
+    </channel>
+</rss>

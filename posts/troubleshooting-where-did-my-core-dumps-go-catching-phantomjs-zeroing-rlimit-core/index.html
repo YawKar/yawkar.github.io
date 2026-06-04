@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en" prefix="og: https://ogp.me/ns#">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="X-UA-Compatible"
+      content="IE=edge">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0" />
+<meta name="description"
+      content="software, linux, nix, cats... what?" />
+<meta name="keywords"
+      content="yawkar, engineering, rust, linux" /> 
+
+<title>
+  [troubleshoot] Where did my core dumps go? Catching PhantomJS zeroing RLIMIT_CORE // yawkar&#x27;s blog</title>
+<meta property="og:site_name" content="yawkar&#x27;s blog"/>
+<meta property="og:title" content="yawkar&#x27;s blog | [troubleshoot] Where did my core dumps go? Catching PhantomJS zeroing RLIMIT_CORE"/>
+<meta property="og:type" content="website"/>
+<meta property="og:url" content="https://yawkar.github.io/posts/troubleshooting-where-did-my-core-dumps-go-catching-phantomjs-zeroing-rlimit-core/"/>
+<meta property="og:description" content="software, linux, nix, cats... what?"/>
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="[troubleshoot] Where did my core dumps go? Catching PhantomJS zeroing RLIMIT_CORE"/>
+<meta name="twitter:description" content="software, linux, nix, cats... what?"/>
+<link rel="alternate" type="application/atom+xml" title="yawkar&#x27;s blog" href="https://yawkar.github.io/atom.xml">
+    <meta name="color-scheme" content="light dark">
+    
+    <style>
+html{font-family:monospace;font-size:1rem;line-height:1.5;margin:auto;max-width:70ch;padding:1.5rem 1em 3em}
+img{max-width:100%}img:not([src$=".svg"]),article>div,pre{border-radius:.3rem}img[src$="#pixelate"]{image-rendering:pixelated}
+h1,h2,h3,h4,h5,h6{font-size:inherit;margin:2rem 0 1em}
+h1::before{content:'# '/''}
+h2::before{content:'## '/''}
+h3::before{content:'### '/''}
+p{text-align:justify}p,ul,ol,.g,article>footer,article>header{margin:0 0 2em}
+pre,blockquote{padding:1.5rem;margin:0 0 1.5rem}pre{overflow-x:auto}pre code{background:0!important}blockquote{border-left:3px solid}blockquote>*:last-child{margin-bottom:0}
+article>img,article>p>img,article>div{display:block;margin-bottom:1.5rem;width:100%}
+.yt{aspect-ratio:16/9;width:100%;overflow:hidden}.yt iframe{width:100%;height:100%;border:0}
+.s{font-size:.85rem}
+.theme{display:inline-block;width:1.5rem;height:1.5rem}.theme img,.theme svg{width:100%;height:100%}
+html.lt .theme img:first-child,html.lt .theme svg:first-child,html.dk .theme img:last-child,html.dk .theme svg:last-child{display:none}
+header>div{margin-bottom:1.5rem}footer{margin-top:1.5rem}body>footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
+body>footer img,body>footer svg{width:1em;height:1em;vertical-align:middle}
+.tags{padding:.5rem 0 0 0}.tags li{display:inline}.tags li+li::before{content:' · '}
+nav{display:flex;gap:.5rem;margin:1.5rem 0}nav a{flex:1;display:flex;flex-direction:column;align-items:center;overflow:hidden;font-weight:bold}nav img,nav svg{width:2rem;height:2rem;margin-bottom:.25rem}nav a .s{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(7rem,1fr));gap:.5rem}.g a{aspect-ratio:1;display:flex;align-items:center;justify-content:center}.g img{object-fit:contain;max-height:100%;max-width:100%}
+.p{list-style:none;padding:0}.p ul{margin:0}.p>li{display:flex;gap:1rem;margin-bottom:1rem}.p time{display:flex;flex-direction:column;align-items:center;min-width:3rem;margin:.25rem 0}.p time span:first-child{font-size:1.5em;line-height:1}
+.lb{position:fixed;inset:0;background:#000d;display:flex;align-items:center;justify-content:center;z-index:999;cursor:pointer}.lb img{max-width:95vw;max-height:95vh}
+@media(max-width:30em){html{font-size:.9rem}header .desc{display:none}}
+.footnote-definition{font-size:.85rem;margin:0 0 .5em;display:flex;gap:.5em}.footnote-definition-label{min-width:1.5em}.footnote-definition p{margin:0}.footnote-reference{margin:0 .15em}
+html.lt{background:oklch(.96 .08 97);--tc:#f5e6b3;color:#000}
+html.lt a{color:oklch(.53 .24 258)}
+html.lt a:visited{color:oklch(.48 .24 291)}
+html.lt a.active,html.lt a:active,html.lt a:hover{color:oklch(.53 .27 325)}
+html.lt p,html.lt ul,html.lt ol,html.lt .desc{color:oklch(.4 .11 59)}
+html.lt blockquote,html.lt pre,html.lt code,html.lt article>img,html.lt article>p>img,html.lt .g img{background:oklch(.94 .1 93)!important}
+html.lt ::selection{background:#36c;color:#fff}html.lt .giallo{color-scheme:light!important}
+html.dk{background:#000;--tc:#000;color:#fff}
+html.dk a{color:oklch(.87 .24 166)}
+html.dk a:visited{color:oklch(.79 .13 297)}
+html.dk a.active,html.dk a:active,html.dk a:hover{color:oklch(.76 .25 345)}
+html.dk p,html.dk ul,html.dk ol,html.dk .desc{color:oklch(.92 .15 95)}
+html.dk img[src$=".svg"],html.dk nav svg,html.dk .theme svg,html.dk footer svg{filter:invert(1)}
+html.dk blockquote,html.dk pre,html.dk code,html.dk article>img,html.dk article>p>img,html.dk .g img{background:#222!important}
+html.dk ::selection{background:#fc0;color:#000}html.dk .giallo{color-scheme:dark!important}
+a.active,a:active,a:hover{text-decoration-style:wavy}
+.tags a{text-decoration-style:dotted}
+hr{border:0;border-top:1px dashed;clear:both;margin-bottom:1.5rem}
+@media print{*{color:#000!important;filter:none!important}html[class][class] *{background:none!important}html{font-size:.8rem;max-width:none;padding:0;background:#fff!important}.theme{display:none}img,pre{break-inside:avoid}}
+    </style>
+    <meta name="theme-color" id="tc"><script>(function(){var m=matchMedia('(prefers-color-scheme:dark)'),t=localStorage.theme,h=document.documentElement,c=document.getElementById('tc');t=t=='dk'||t=='lt'?t:m.matches?'dk':'lt';localStorage.theme=t;h.className=t;function u(){c.content=getComputedStyle(h).getPropertyValue('--tc')}u();window.zb=function(){t=t==='dk'?'lt':'dk';localStorage.theme=t;h.className=t;u()}})()</script>
+    
+</head>
+<body>
+    
+    <header>
+        <div class="s" style="display:flex;justify-content:space-between;align-items:center">
+            <span><strong>yawkar&#x27;s blog</strong><span class="desc"> · software, linux, nix, cats... what?</span></span>
+            <a href="#" onclick="zb();return false" class="theme" aria-label="Toggle theme" title="Toggle theme"><img src="/icons/light.svg" alt="Light mode"><img src="/icons/asleep.svg" alt="Dark mode"></a>
+        </div>
+        <hr>
+        <nav>
+            <a href="https://yawkar.github.io/" aria-label="Home"><img src="/icons/home.svg" alt=""><span class="s">Home</span></a>
+            <a href="https://yawkar.github.io/posts/" aria-label="Posts" class="active" aria-current="page"><img src="/icons/chat.svg" alt=""><span class="s">Posts</span></a>
+            <a href="https://yawkar.github.io/gallery/" aria-label="Gallery"><img src="/icons/color-palette.svg" alt=""><span class="s">Gallery</span></a>
+            <a href="https://yawkar.github.io/tags/" aria-label="Tags"><img src="/icons/idea.svg" alt=""><span class="s">Tags</span></a>
+            <a href="https://yawkar.github.io/search/" aria-label="Search"><img src="/icons/search.svg" alt=""><span class="s">Search</span></a>
+            </nav>
+    </header>
+    <hr>
+    <main>
+    
+<article>
+  <header>
+    <h1>[troubleshoot] Where did my core dumps go? Catching PhantomJS zeroing RLIMIT_CORE</h1>
+    <time class="s" datetime="2026-03-30">30 Mar 2026</time>
+  </header>
+  
+  <h1 id="tl-dr">TL;DR</h1>
+<ul>
+<li>configured <code>RLIMIT_CORE</code> on the container's root process to 40 GiB (<code>prlimit -c $(( 40 * 1024 * 1024 * 1024 ))</code>)</li>
+<li>yet got no core dumps when PhantomJS process terminated itself with <code>SIGABRT</code></li>
+<li>the core dump handler registered in <code>/proc/sys/kernel/core_pattern</code> logged that <code>%c</code> (core file size soft resource limit) was <code>0</code></li>
+<li>turned out (under <code>gdb</code>) PhantomJS makes a <code>setrlimit</code> call effectively zeroing its <code>RLIMIT_CORE</code></li>
+</ul>
+<h1 id="the-problem">The problem</h1>
+<p>A cybersecurity engineer from a team that uses PhantomJS for their automated vulnerability analysis came to me with a problem.
+From time to time the PhantomJS process in their pods crashed badly, mostly with <code>SIGABRT</code>.
+He couldn't understand where his core dumps went and asked me to help him find out.</p>
+<p>I entered the container and found the parent process. It was a Go application that ran PhantomJS via <code>execve()</code> as part of its job. Indeed, no core dumps were found in <code>/coredumps</code> directory where our core dump handler normally places them.</p>
+<h1 id="first-clue-core-dump-handler-says-c-0">First clue: core dump handler says <code>%c = 0</code></h1>
+<p>In the logs of the core dump handler I saw that it logged <code>0</code> instead of <code>42949672960</code> (which corresponds to 40GiB) under <code>%c</code> in <code>core_pattern</code>, which stands for the core file size soft limit.</p>
+<blockquote>
+<p><code>/proc/sys/kernel/core_pattern</code> is just a command that Linux pipes a fresh core dump to, while also giving it some arguments describing the core and the crashed process. It typically looks like this: <code>|/usr/lib/coredump-handler -c %c -p %p -e %e</code>. Linux substitutes <code>%c %p %e</code> and so on. <code>%e</code> is substituted by first 15 characters of the executable filename. More on that in <code>man 5 core</code>.
+It instantly made me suspect problems with <code>RLIMIT_CORE</code> as this is the limit that Linux kernel's dumper takes into account when handling <code>SIGABRT</code> (and other signals with default signal action <code>SIG_DFL</code> to dump a core).</p>
+</blockquote>
+<h1 id="finding-the-binary">Finding the binary</h1>
+<p>I straced the process to find the path to the PhantomJS binary it's trying to run.</p>
+<pre class="giallo" style="color-scheme: light dark; color: light-dark(#24292E, #E1E4E8); background-color: light-dark(#FFFFFF, #24292E);"><code data-lang="shellscript"><span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">$</span><span style="color: light-dark(#032F62, #9ECBFF);"> sudo</span><span style="color: light-dark(#032F62, #9ECBFF);"> strace</span><span style="color: light-dark(#005CC5, #79B8FF);"> -</span><span style="color: light-dark(#005CC5, #79B8FF);">f</span><span style="color: light-dark(#005CC5, #79B8FF);"> -</span><span style="color: light-dark(#005CC5, #79B8FF);">e</span><span style="color: light-dark(#032F62, #9ECBFF);"> execve</span><span style="color: light-dark(#005CC5, #79B8FF);"> -</span><span style="color: light-dark(#005CC5, #79B8FF);">p</span><span> $(</span><span style="color: light-dark(#6F42C1, #B392F0);">pgrep</span><span style="color: light-dark(#032F62, #9ECBFF);"> the-go-application-name</span><span>)</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6A737D, #6A737D);">#</span><span style="color: light-dark(#6A737D, #6A737D);"> ...</span></span>
+<span class="giallo-l"><span>[</span><span>pid 259132</span><span>]</span><span> execve(</span><span style="color: light-dark(#6F42C1, #B392F0);">&quot;</span><span style="color: light-dark(#6F42C1, #B392F0);">/usr/bin/phantomjs/phantomjs</span><span style="color: light-dark(#6F42C1, #B392F0);">&quot;</span><span style="color: light-dark(#6F42C1, #B392F0);">,</span><span> [</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span style="color: light-dark(#032F62, #9ECBFF);">phantomjs</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span>,</span><span style="color: light-dark(#032F62, #9ECBFF);"> ...],</span><span style="color: light-dark(#005CC5, #79B8FF);"> 0x55858e2a6d70</span><span style="color: light-dark(#032F62, #9ECBFF);"> /</span><span style="color: light-dark(#005CC5, #79B8FF);">*</span><span style="color: light-dark(#005CC5, #79B8FF);"> 126</span><span style="color: light-dark(#032F62, #9ECBFF);"> vars</span><span style="color: light-dark(#005CC5, #79B8FF);"> *</span><span style="color: light-dark(#032F62, #9ECBFF);">/</span><span>) = 0</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6A737D, #6A737D);">#</span><span style="color: light-dark(#6A737D, #6A737D);"> ...</span></span></code></pre><h1 id="verifying-that-limits-propagate-correctly">Verifying that limits propagate correctly</h1>
+<p>After that I stepped into <code>gdb</code> that was available on the host. I wanted to see if <code>prlimit -c -p $(pgrep phantomjs)</code> changed somehow from my session's ulimit in order to check that propagation of limits worked as expected.</p>
+<pre class="giallo" style="color-scheme: light dark; color: light-dark(#24292E, #E1E4E8); background-color: light-dark(#FFFFFF, #24292E);"><code data-lang="shellscript"><span class="giallo-l"><span style="color: light-dark(#6A737D, #6A737D);">#</span><span style="color: light-dark(#6A737D, #6A737D);"> Set RLIMIT_CORE for my current session</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">$</span><span style="color: light-dark(#032F62, #9ECBFF);"> ulimit</span><span style="color: light-dark(#005CC5, #79B8FF);"> -</span><span style="color: light-dark(#005CC5, #79B8FF);">c</span><span style="color: light-dark(#005CC5, #79B8FF);"> 123456</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6A737D, #6A737D);">#</span><span style="color: light-dark(#6A737D, #6A737D);"> Check that it&#39;s set</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">$</span><span style="color: light-dark(#032F62, #9ECBFF);"> ulimit</span><span style="color: light-dark(#005CC5, #79B8FF);"> -</span><span style="color: light-dark(#005CC5, #79B8FF);">c</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">123456</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6A737D, #6A737D);">#</span><span style="color: light-dark(#6A737D, #6A737D);"> Check that the limit is indeed propagating to child processes</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">$</span><span style="color: light-dark(#032F62, #9ECBFF);"> echo</span><span style="color: light-dark(#032F62, #9ECBFF);"> &quot;</span><span style="color: light-dark(#032F62, #9ECBFF);">Current process: </span><span style="color: light-dark(#005CC5, #79B8FF);">$</span><span style="color: light-dark(#005CC5, #79B8FF);">$</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span> &amp;&amp;</span><span style="color: light-dark(#6F42C1, #B392F0);"> bash</span><span style="color: light-dark(#005CC5, #79B8FF);"> -</span><span style="color: light-dark(#005CC5, #79B8FF);">c</span><span style="color: light-dark(#032F62, #9ECBFF);"> &#39;</span><span style="color: light-dark(#032F62, #9ECBFF);">echo &quot;Child process: $$&quot; &amp;&amp; ulimit -c</span><span style="color: light-dark(#032F62, #9ECBFF);">&#39;</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">Current</span><span style="color: light-dark(#032F62, #9ECBFF);"> process:</span><span style="color: light-dark(#005CC5, #79B8FF);"> 303405</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">Child</span><span style="color: light-dark(#032F62, #9ECBFF);"> process:</span><span style="color: light-dark(#005CC5, #79B8FF);"> 303408</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">123456</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6A737D, #6A737D);">#</span><span style="color: light-dark(#6A737D, #6A737D);"> Now run the phantomjs binary under gdb</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">$</span><span style="color: light-dark(#032F62, #9ECBFF);"> gdb</span><span style="color: light-dark(#005CC5, #79B8FF);"> -</span><span style="color: light-dark(#005CC5, #79B8FF);">q</span><span style="color: light-dark(#032F62, #9ECBFF);"> /usr/bin/phantomjs/phantomjs</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">Reading</span><span style="color: light-dark(#032F62, #9ECBFF);"> symbols</span><span style="color: light-dark(#032F62, #9ECBFF);"> from</span><span style="color: light-dark(#032F62, #9ECBFF);"> /usr/bin/phantomjs/phantomjs...</span></span>
+<span class="giallo-l"><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">No</span><span style="color: light-dark(#032F62, #9ECBFF);"> debugging</span><span style="color: light-dark(#032F62, #9ECBFF);"> symbols</span><span style="color: light-dark(#032F62, #9ECBFF);"> found</span><span style="color: light-dark(#032F62, #9ECBFF);"> in</span><span style="color: light-dark(#032F62, #9ECBFF);"> /usr/bin/phantomjs/phantomjs</span><span>)</span></span>
+<span class="giallo-l"><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">gdb</span><span>)</span><span style="color: light-dark(#6A737D, #6A737D);"> #</span><span style="color: light-dark(#6A737D, #6A737D);"> Add breakpoint to standard `_start` symbol entrypoint</span></span>
+<span class="giallo-l"><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">gdb</span><span>)</span><span style="color: light-dark(#D73A49, #F97583);"> break</span><span style="color: light-dark(#032F62, #9ECBFF);"> _start</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">Function</span><span style="color: light-dark(#032F62, #9ECBFF);"> &quot;</span><span style="color: light-dark(#032F62, #9ECBFF);">_start</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span style="color: light-dark(#032F62, #9ECBFF);"> not</span><span style="color: light-dark(#032F62, #9ECBFF);"> defined.</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">Make</span><span style="color: light-dark(#032F62, #9ECBFF);"> breakpoint</span><span style="color: light-dark(#032F62, #9ECBFF);"> pending</span><span style="color: light-dark(#032F62, #9ECBFF);"> on</span><span style="color: light-dark(#032F62, #9ECBFF);"> future</span><span style="color: light-dark(#032F62, #9ECBFF);"> shared</span><span style="color: light-dark(#032F62, #9ECBFF);"> library</span><span style="color: light-dark(#032F62, #9ECBFF);"> load?</span><span> (y</span><span style="color: light-dark(#032F62, #9ECBFF);"> or</span><span> [n</span><span>]) y</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">Breakpoint</span><span style="color: light-dark(#005CC5, #79B8FF);"> 1</span><span> (_start</span><span>) pending.</span></span>
+<span class="giallo-l"><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">gdb</span><span>)</span><span style="color: light-dark(#6F42C1, #B392F0);"> run</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">Starting</span><span style="color: light-dark(#032F62, #9ECBFF);"> program:</span><span style="color: light-dark(#032F62, #9ECBFF);"> /usr/bin/phantomjs/phantomjs</span><span> </span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">Breakpoint</span><span style="color: light-dark(#032F62, #9ECBFF);"> 1,</span><span style="color: light-dark(#005CC5, #79B8FF);"> 0x00007ffff7fe3d40</span><span style="color: light-dark(#032F62, #9ECBFF);"> in</span><span style="color: light-dark(#032F62, #9ECBFF);"> _start</span><span> (</span><span>) from /lib64/ld-linux-x86-64.so.2</span></span>
+<span class="giallo-l"><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">gdb</span><span>)</span><span style="color: light-dark(#6A737D, #6A737D);"> #</span><span style="color: light-dark(#6A737D, #6A737D);"> Let&#39;s get the PID of the inferior process to then see the limits</span></span>
+<span class="giallo-l"><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">gdb</span><span>)</span><span style="color: light-dark(#6F42C1, #B392F0);"> info</span><span style="color: light-dark(#032F62, #9ECBFF);"> proc</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">process</span><span style="color: light-dark(#005CC5, #79B8FF);"> 33913</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">cmdline</span><span style="color: light-dark(#032F62, #9ECBFF);"> =</span><span style="color: light-dark(#032F62, #9ECBFF);"> &#39;</span><span style="color: light-dark(#032F62, #9ECBFF);">/usr/bin/phantomjs/phantomjs</span><span style="color: light-dark(#032F62, #9ECBFF);">&#39;</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">cwd</span><span style="color: light-dark(#032F62, #9ECBFF);"> =</span><span style="color: light-dark(#032F62, #9ECBFF);"> &#39;</span><span style="color: light-dark(#032F62, #9ECBFF);">/</span><span style="color: light-dark(#032F62, #9ECBFF);">&#39;</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">exe</span><span style="color: light-dark(#032F62, #9ECBFF);"> =</span><span style="color: light-dark(#032F62, #9ECBFF);"> &#39;</span><span style="color: light-dark(#032F62, #9ECBFF);">/usr/bin/phantomjs/phantomjs</span><span style="color: light-dark(#032F62, #9ECBFF);">&#39;</span></span>
+<span class="giallo-l"><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">gdb</span><span>)</span><span style="color: light-dark(#6F42C1, #B392F0);"> shell</span><span style="color: light-dark(#032F62, #9ECBFF);"> cat</span><span style="color: light-dark(#032F62, #9ECBFF);"> /proc/33913/limits</span><span style="color: light-dark(#D73A49, #F97583);"> |</span><span style="color: light-dark(#6F42C1, #B392F0);"> grep</span><span style="color: light-dark(#032F62, #9ECBFF);"> core</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">Max</span><span style="color: light-dark(#032F62, #9ECBFF);"> core</span><span style="color: light-dark(#032F62, #9ECBFF);"> file</span><span style="color: light-dark(#032F62, #9ECBFF);"> size</span><span style="color: light-dark(#005CC5, #79B8FF);">        126418944</span><span style="color: light-dark(#005CC5, #79B8FF);">            126418944</span><span style="color: light-dark(#032F62, #9ECBFF);">            bytes</span><span>     </span></span>
+<span class="giallo-l"><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">gdb</span><span>)</span><span style="color: light-dark(#6F42C1, #B392F0);"> shell</span><span style="color: light-dark(#032F62, #9ECBFF);"> echo</span><span> $(</span><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">126418944</span><span style="color: light-dark(#032F62, #9ECBFF);"> /</span><span style="color: light-dark(#005CC5, #79B8FF);"> 1024</span><span>)</span><span>)</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">123456</span></span>
+<span class="giallo-l"><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">gdb</span><span>)</span><span style="color: light-dark(#6F42C1, #B392F0);"> quit</span></span></code></pre>
+<p>So the limit arrives correctly. Something inside PhantomJS changes it.</p>
+<h1 id="catching-the-culprit">Catching the culprit</h1>
+<p>There's a known syscall that allows programs to set these limits: <code>setrlimit</code> (<code>man 2 setrlimit</code>).
+Code from the manpage:</p>
+<pre class="giallo" style="color-scheme: light dark; color: light-dark(#24292E, #E1E4E8); background-color: light-dark(#FFFFFF, #24292E);"><code data-lang="c"><span class="giallo-l"><span style="color: light-dark(#D73A49, #F97583);">#</span><span style="color: light-dark(#D73A49, #F97583);">include</span><span style="color: light-dark(#032F62, #9ECBFF);"> &lt;</span><span style="color: light-dark(#032F62, #9ECBFF);">sys/resource.h</span><span style="color: light-dark(#032F62, #9ECBFF);">&gt;</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: light-dark(#D73A49, #F97583);">int</span><span style="color: light-dark(#6F42C1, #B392F0);"> getrlimit</span><span>(</span><span style="color: light-dark(#D73A49, #F97583);">int</span><span style="color: light-dark(#E36209, #FFAB70);"> resource</span><span>,</span><span style="color: light-dark(#D73A49, #F97583);"> struct</span><span> rlimit </span><span style="color: light-dark(#D73A49, #F97583);">*</span><span style="color: light-dark(#E36209, #FFAB70);">rlim</span><span>)</span><span>;</span></span>
+<span class="giallo-l"><span style="color: light-dark(#D73A49, #F97583);">int</span><span style="color: light-dark(#6F42C1, #B392F0);"> setrlimit</span><span>(</span><span style="color: light-dark(#D73A49, #F97583);">int</span><span style="color: light-dark(#E36209, #FFAB70);"> resource</span><span>,</span><span style="color: light-dark(#D73A49, #F97583);"> const</span><span style="color: light-dark(#D73A49, #F97583);"> struct</span><span> rlimit </span><span style="color: light-dark(#D73A49, #F97583);">*</span><span style="color: light-dark(#E36209, #FFAB70);">rlim</span><span>)</span><span>;</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: light-dark(#D73A49, #F97583);">int</span><span style="color: light-dark(#6F42C1, #B392F0);"> prlimit</span><span>(</span><span style="color: light-dark(#D73A49, #F97583);">pid_t</span><span style="color: light-dark(#E36209, #FFAB70);"> pid</span><span>,</span><span style="color: light-dark(#D73A49, #F97583);"> int</span><span style="color: light-dark(#E36209, #FFAB70);"> resource</span><span>,</span></span>
+<span class="giallo-l"><span style="color: light-dark(#D73A49, #F97583);">const</span><span style="color: light-dark(#D73A49, #F97583);"> struct</span><span> rlimit </span><span style="color: light-dark(#D73A49, #F97583);">*</span><span>_Nullable </span><span style="color: light-dark(#E36209, #FFAB70);">new_limit</span><span>,</span></span>
+<span class="giallo-l"><span style="color: light-dark(#D73A49, #F97583);">struct</span><span> rlimit </span><span style="color: light-dark(#D73A49, #F97583);">*</span><span>_Nullable </span><span style="color: light-dark(#E36209, #FFAB70);">old_limit</span><span>)</span><span>;</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: light-dark(#D73A49, #F97583);">struct</span><span> rlimit </span><span>{</span></span>
+<span class="giallo-l"><span style="color: light-dark(#005CC5, #79B8FF);">    rlim_t</span><span>  rlim_cur</span><span>;</span><span style="color: light-dark(#6A737D, #6A737D);">  /*</span><span style="color: light-dark(#6A737D, #6A737D);"> Soft limit </span><span style="color: light-dark(#6A737D, #6A737D);">*/</span></span>
+<span class="giallo-l"><span style="color: light-dark(#005CC5, #79B8FF);">    rlim_t</span><span>  rlim_max</span><span>;</span><span style="color: light-dark(#6A737D, #6A737D);">  /*</span><span style="color: light-dark(#6A737D, #6A737D);"> Hard limit (ceiling for rlim_cur) </span><span style="color: light-dark(#6A737D, #6A737D);">*/</span></span>
+<span class="giallo-l"><span>}</span><span>;</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: light-dark(#D73A49, #F97583);">typedef</span><span style="color: light-dark(#6A737D, #6A737D);"> /*</span><span style="color: light-dark(#6A737D, #6A737D);"> ... </span><span style="color: light-dark(#6A737D, #6A737D);">*/</span><span style="color: light-dark(#005CC5, #79B8FF);">  rlim_t</span><span>;</span><span style="color: light-dark(#6A737D, #6A737D);">  /*</span><span style="color: light-dark(#6A737D, #6A737D);"> Unsigned integer type </span><span style="color: light-dark(#6A737D, #6A737D);">*/</span></span></code></pre>
+<p>If I can catch PhantomJS calling this syscall then I can see what it sets as its new <code>RLIMIT_CORE</code>.
+Let's see the actual <code>setrlimit</code> call:</p>
+<pre class="giallo" style="color-scheme: light dark; color: light-dark(#24292E, #E1E4E8); background-color: light-dark(#FFFFFF, #24292E);"><code data-lang="shellscript"><span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">$</span><span style="color: light-dark(#032F62, #9ECBFF);"> gdb</span><span style="color: light-dark(#005CC5, #79B8FF);"> -</span><span style="color: light-dark(#005CC5, #79B8FF);">q</span><span style="color: light-dark(#032F62, #9ECBFF);"> /usr/bin/phantomjs/phantomjs</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">Reading</span><span style="color: light-dark(#032F62, #9ECBFF);"> symbols</span><span style="color: light-dark(#032F62, #9ECBFF);"> from</span><span style="color: light-dark(#032F62, #9ECBFF);"> /usr/bin/phantomjs/phantomjs...</span></span>
+<span class="giallo-l"><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">No</span><span style="color: light-dark(#032F62, #9ECBFF);"> debugging</span><span style="color: light-dark(#032F62, #9ECBFF);"> symbols</span><span style="color: light-dark(#032F62, #9ECBFF);"> found</span><span style="color: light-dark(#032F62, #9ECBFF);"> in</span><span style="color: light-dark(#032F62, #9ECBFF);"> /usr/bin/phantomjs/phantomjs</span><span>)</span></span>
+<span class="giallo-l"><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">gdb</span><span>)</span><span style="color: light-dark(#D73A49, #F97583);"> break</span><span style="color: light-dark(#032F62, #9ECBFF);"> setrlimit</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">Breakpoint</span><span style="color: light-dark(#005CC5, #79B8FF);"> 1</span><span style="color: light-dark(#032F62, #9ECBFF);"> at</span><span style="color: light-dark(#005CC5, #79B8FF);"> 0x18e10</span></span>
+<span class="giallo-l"><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">gdb</span><span>)</span><span style="color: light-dark(#6F42C1, #B392F0);"> run</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">Starting</span><span style="color: light-dark(#032F62, #9ECBFF);"> program:</span><span style="color: light-dark(#032F62, #9ECBFF);"> /usr/bin/phantomjs/phantomjs</span></span>
+<span class="giallo-l"><span>[</span><span>Thread debugging using libthread_db enabled</span><span>]</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">Using</span><span style="color: light-dark(#032F62, #9ECBFF);"> host</span><span style="color: light-dark(#032F62, #9ECBFF);"> libthread_db</span><span style="color: light-dark(#032F62, #9ECBFF);"> library</span><span style="color: light-dark(#032F62, #9ECBFF);"> &quot;</span><span style="color: light-dark(#032F62, #9ECBFF);">/lib/x86_64-linux-gnu/libthread_db.so.1</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span style="color: light-dark(#032F62, #9ECBFF);">.</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">Breakpoint</span><span style="color: light-dark(#032F62, #9ECBFF);"> 1,</span><span style="color: light-dark(#032F62, #9ECBFF);"> __setrlimit64</span><span> (resource=RLIMIT_CORE,</span><span style="color: light-dark(#032F62, #9ECBFF);"> rlimits=</span><span style="color: light-dark(#005CC5, #79B8FF);">0x7fffffffe160</span><span>) at ../sysdeps/unix/sysv/linux/setrlimit64.c:38</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">38</span><span style="color: light-dark(#032F62, #9ECBFF);">      ../sysdeps/unix/sysv/linux/setrlimit64.c:</span><span style="color: light-dark(#032F62, #9ECBFF);"> No</span><span style="color: light-dark(#032F62, #9ECBFF);"> such</span><span style="color: light-dark(#032F62, #9ECBFF);"> file</span><span style="color: light-dark(#032F62, #9ECBFF);"> or</span><span style="color: light-dark(#032F62, #9ECBFF);"> directory.</span></span>
+<span class="giallo-l"><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">gdb</span><span>)</span><span style="color: light-dark(#6A737D, #6A737D);"> #</span><span style="color: light-dark(#6A737D, #6A737D);"> Got it! Now need to pretty print the actual value</span></span>
+<span class="giallo-l"><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">gdb</span><span>)</span><span style="color: light-dark(#6F42C1, #B392F0);"> info</span><span style="color: light-dark(#032F62, #9ECBFF);"> args</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">resource</span><span style="color: light-dark(#032F62, #9ECBFF);"> =</span><span style="color: light-dark(#032F62, #9ECBFF);"> RLIMIT_CORE</span></span>
+<span class="giallo-l"><span style="color: light-dark(#6F42C1, #B392F0);">rlimits</span><span style="color: light-dark(#032F62, #9ECBFF);"> =</span><span style="color: light-dark(#005CC5, #79B8FF);"> 0x7fffffffe160</span></span>
+<span class="giallo-l"><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">gdb</span><span>)</span><span style="color: light-dark(#005CC5, #79B8FF);"> print</span><span style="color: light-dark(#005CC5, #79B8FF);"> *</span><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">struct</span><span style="color: light-dark(#032F62, #9ECBFF);"> rlimit</span><span style="color: light-dark(#005CC5, #79B8FF);"> *</span><span>)</span><span style="color: light-dark(#032F62, #9ECBFF);">0x7fffffffe160</span></span>
+<span class="giallo-l"><span style="color: light-dark(#E36209, #FFAB70);">$</span><span style="color: light-dark(#E36209, #FFAB70);">1</span><span> = {</span><span style="color: light-dark(#6F42C1, #B392F0);">rlim_cur</span><span style="color: light-dark(#032F62, #9ECBFF);"> =</span><span style="color: light-dark(#032F62, #9ECBFF);"> 0,</span><span style="color: light-dark(#032F62, #9ECBFF);"> rlim_max</span><span style="color: light-dark(#032F62, #9ECBFF);"> =</span><span style="color: light-dark(#005CC5, #79B8FF);"> 0</span><span style="color: light-dark(#032F62, #9ECBFF);">}</span></span>
+<span class="giallo-l"><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">gdb</span><span>)</span><span style="color: light-dark(#6A737D, #6A737D);"> #</span><span style="color: light-dark(#6A737D, #6A737D);"> 🎉</span></span></code></pre>
+<p>With this we can finally state that PhantomJS sets its own <code>RLIMIT_CORE</code> to <code>0</code> on startup.
+And that's exactly the reason why no core dumps are produced.</p>
+<h1 id="conclusion">Conclusion</h1>
+<p>I showed the cybersec guy these outputs and explained what the problem was, warned him about the deprecation of PhantomJS.
+The fix path was either patching PhantomJS's startup behavior (<code>LD_PRELOAD</code> a small injection that ignores <code>setrlimit</code> calls with <code>RLIMIT_CORE</code>) or migrating to a maintained headless browser (PhantomJS has been deprecated since 2018).</p>
+<h1 id="note">Note</h1>
+<p>Although I used gdb to catch the <code>setrlimit</code> call, I could have caught it more easily with <code>strace</code>. I used <code>gdb</code> mostly because at the time I wasn't sure <code>setrlimit</code> was the culprit.</p>
+<h1 id="special-thanks">Special thanks</h1>
+<p>A special thanks to my friend Yuri Fomichev who gave me an opportunity to troubleshoot this!</p>
+<h1 id="further-reading">Further reading</h1>
+<ul>
+<li><code>man 5 core</code> for the part about when core dump is not produced and how to use <code>/proc/sys/kernel/core_pattern</code></li>
+<li><code>man 7 signal</code> for table of default signal actions, such as <code>core</code> dump, <code>term</code>inate, <code>ign</code>ore, <code>stop</code> and <code>cont</code>inue.</li>
+</ul>
+
+  
+  
+  <footer class="s">
+    Tags: <a href='https://yawkar.github.io/tags/linux'>linux</a>, <a href='https://yawkar.github.io/tags/troubleshoot'>troubleshoot</a>
+  </footer>
+  
+  
+</article>
+</main>
+    <hr>
+    <footer class="s">
+        <span>© yawkar&#x27;s blog 2026</span>
+        <span><img src="/icons/rss.svg" alt=""> Feeds: <a href="https://yawkar.github.io/atom.xml">Atom</a> · <a href="https://yawkar.github.io/rss.xml">RSS</a></span>
+    </footer>
+    
+    
+    
+    <script>document.querySelectorAll('article img[srcset]').forEach(i=>{if(i.closest('a'))return;i.style.cursor='pointer';i.onclick=()=>{let d=document.createElement('div'),s=i.srcset.split(',').pop().trim().split(' ')[0];d.className='lb';d.innerHTML='<img src="'+s+'">';document.body.style.overflow='hidden';d.onclick=()=>{d.remove();document.body.style.overflow=''};document.body.appendChild(d)}})</script>
+    </body>
+</html>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en" prefix="og: https://ogp.me/ns#">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="X-UA-Compatible"
+      content="IE=edge">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0" />
+<meta name="description"
+      content="software, linux, nix, cats... what?" />
+<meta name="keywords"
+      content="yawkar, engineering, rust, linux" /> 
+
+<title>
+  [youki] Fixing bounding capabilities leak when `config.json` omits the capability set // yawkar&#x27;s blog</title>
+<meta property="og:site_name" content="yawkar&#x27;s blog"/>
+<meta property="og:title" content="yawkar&#x27;s blog | [youki] Fixing bounding capabilities leak when `config.json` omits the capability set"/>
+<meta property="og:type" content="website"/>
+<meta property="og:url" content="https://yawkar.github.io/posts/youki-issue-3434-fixing-bounding-capabilities-leak-when-config-json-omits-the-capability-set/"/>
+<meta property="og:description" content="software, linux, nix, cats... what?"/>
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="[youki] Fixing bounding capabilities leak when `config.json` omits the capability set"/>
+<meta name="twitter:description" content="software, linux, nix, cats... what?"/>
+<link rel="alternate" type="application/atom+xml" title="yawkar&#x27;s blog" href="https://yawkar.github.io/atom.xml">
+    <meta name="color-scheme" content="light dark">
+    
+    <style>
+html{font-family:monospace;font-size:1rem;line-height:1.5;margin:auto;max-width:70ch;padding:1.5rem 1em 3em}
+img{max-width:100%}img:not([src$=".svg"]),article>div,pre{border-radius:.3rem}img[src$="#pixelate"]{image-rendering:pixelated}
+h1,h2,h3,h4,h5,h6{font-size:inherit;margin:2rem 0 1em}
+h1::before{content:'# '/''}
+h2::before{content:'## '/''}
+h3::before{content:'### '/''}
+p{text-align:justify}p,ul,ol,.g,article>footer,article>header{margin:0 0 2em}
+pre,blockquote{padding:1.5rem;margin:0 0 1.5rem}pre{overflow-x:auto}pre code{background:0!important}blockquote{border-left:3px solid}blockquote>*:last-child{margin-bottom:0}
+article>img,article>p>img,article>div{display:block;margin-bottom:1.5rem;width:100%}
+.yt{aspect-ratio:16/9;width:100%;overflow:hidden}.yt iframe{width:100%;height:100%;border:0}
+.s{font-size:.85rem}
+.theme{display:inline-block;width:1.5rem;height:1.5rem}.theme img,.theme svg{width:100%;height:100%}
+html.lt .theme img:first-child,html.lt .theme svg:first-child,html.dk .theme img:last-child,html.dk .theme svg:last-child{display:none}
+header>div{margin-bottom:1.5rem}footer{margin-top:1.5rem}body>footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
+body>footer img,body>footer svg{width:1em;height:1em;vertical-align:middle}
+.tags{padding:.5rem 0 0 0}.tags li{display:inline}.tags li+li::before{content:' · '}
+nav{display:flex;gap:.5rem;margin:1.5rem 0}nav a{flex:1;display:flex;flex-direction:column;align-items:center;overflow:hidden;font-weight:bold}nav img,nav svg{width:2rem;height:2rem;margin-bottom:.25rem}nav a .s{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(7rem,1fr));gap:.5rem}.g a{aspect-ratio:1;display:flex;align-items:center;justify-content:center}.g img{object-fit:contain;max-height:100%;max-width:100%}
+.p{list-style:none;padding:0}.p ul{margin:0}.p>li{display:flex;gap:1rem;margin-bottom:1rem}.p time{display:flex;flex-direction:column;align-items:center;min-width:3rem;margin:.25rem 0}.p time span:first-child{font-size:1.5em;line-height:1}
+.lb{position:fixed;inset:0;background:#000d;display:flex;align-items:center;justify-content:center;z-index:999;cursor:pointer}.lb img{max-width:95vw;max-height:95vh}
+@media(max-width:30em){html{font-size:.9rem}header .desc{display:none}}
+.footnote-definition{font-size:.85rem;margin:0 0 .5em;display:flex;gap:.5em}.footnote-definition-label{min-width:1.5em}.footnote-definition p{margin:0}.footnote-reference{margin:0 .15em}
+html.lt{background:oklch(.96 .08 97);--tc:#f5e6b3;color:#000}
+html.lt a{color:oklch(.53 .24 258)}
+html.lt a:visited{color:oklch(.48 .24 291)}
+html.lt a.active,html.lt a:active,html.lt a:hover{color:oklch(.53 .27 325)}
+html.lt p,html.lt ul,html.lt ol,html.lt .desc{color:oklch(.4 .11 59)}
+html.lt blockquote,html.lt pre,html.lt code,html.lt article>img,html.lt article>p>img,html.lt .g img{background:oklch(.94 .1 93)!important}
+html.lt ::selection{background:#36c;color:#fff}html.lt .giallo{color-scheme:light!important}
+html.dk{background:#000;--tc:#000;color:#fff}
+html.dk a{color:oklch(.87 .24 166)}
+html.dk a:visited{color:oklch(.79 .13 297)}
+html.dk a.active,html.dk a:active,html.dk a:hover{color:oklch(.76 .25 345)}
+html.dk p,html.dk ul,html.dk ol,html.dk .desc{color:oklch(.92 .15 95)}
+html.dk img[src$=".svg"],html.dk nav svg,html.dk .theme svg,html.dk footer svg{filter:invert(1)}
+html.dk blockquote,html.dk pre,html.dk code,html.dk article>img,html.dk article>p>img,html.dk .g img{background:#222!important}
+html.dk ::selection{background:#fc0;color:#000}html.dk .giallo{color-scheme:dark!important}
+a.active,a:active,a:hover{text-decoration-style:wavy}
+.tags a{text-decoration-style:dotted}
+hr{border:0;border-top:1px dashed;clear:both;margin-bottom:1.5rem}
+@media print{*{color:#000!important;filter:none!important}html[class][class] *{background:none!important}html{font-size:.8rem;max-width:none;padding:0;background:#fff!important}.theme{display:none}img,pre{break-inside:avoid}}
+    </style>
+    <meta name="theme-color" id="tc"><script>(function(){var m=matchMedia('(prefers-color-scheme:dark)'),t=localStorage.theme,h=document.documentElement,c=document.getElementById('tc');t=t=='dk'||t=='lt'?t:m.matches?'dk':'lt';localStorage.theme=t;h.className=t;function u(){c.content=getComputedStyle(h).getPropertyValue('--tc')}u();window.zb=function(){t=t==='dk'?'lt':'dk';localStorage.theme=t;h.className=t;u()}})()</script>
+    
+</head>
+<body>
+    
+    <header>
+        <div class="s" style="display:flex;justify-content:space-between;align-items:center">
+            <span><strong>yawkar&#x27;s blog</strong><span class="desc"> · software, linux, nix, cats... what?</span></span>
+            <a href="#" onclick="zb();return false" class="theme" aria-label="Toggle theme" title="Toggle theme"><img src="/icons/light.svg" alt="Light mode"><img src="/icons/asleep.svg" alt="Dark mode"></a>
+        </div>
+        <hr>
+        <nav>
+            <a href="https://yawkar.github.io/" aria-label="Home"><img src="/icons/home.svg" alt=""><span class="s">Home</span></a>
+            <a href="https://yawkar.github.io/posts/" aria-label="Posts" class="active" aria-current="page"><img src="/icons/chat.svg" alt=""><span class="s">Posts</span></a>
+            <a href="https://yawkar.github.io/gallery/" aria-label="Gallery"><img src="/icons/color-palette.svg" alt=""><span class="s">Gallery</span></a>
+            <a href="https://yawkar.github.io/tags/" aria-label="Tags"><img src="/icons/idea.svg" alt=""><span class="s">Tags</span></a>
+            <a href="https://yawkar.github.io/search/" aria-label="Search"><img src="/icons/search.svg" alt=""><span class="s">Search</span></a>
+            </nav>
+    </header>
+    <hr>
+    <main>
+    
+<article>
+  <header>
+    <h1>[youki] Fixing bounding capabilities leak when `config.json` omits the capability set</h1>
+    <time class="s" datetime="2026-05-27">27 May 2026</time>
+  </header>
+  
+  <blockquote>
+<ul>
+<li>issue: <a rel="external" href="https://github.com/youki-dev/youki/issues/3434">#3434:failed to drop capabilities in youki exec</a></li>
+<li>fix: <a rel="external" href="https://github.com/youki-dev/youki/pull/3554">#3554:drop bounding caps by default if unset</a></li>
+</ul>
+</blockquote>
+<h1 id="tl-dr">TL;DR</h1>
+<ul>
+<li><code>youki</code>'s <code>run</code> and <code>exec</code> paths handled a missing <code>.process.capabilities.bounding</code> inconsistently</li>
+<li><code>youki run</code> didn't touch the bounding capabilities set while <code>youki exec</code> correctly dropped all bounding capabilities</li>
+<li>solution is to default unset bounding capabilities to an empty set</li>
+</ul>
+<h1 id="comparison-table-for-clarity">Comparison table for clarity</h1>
+<table><thead><tr><th style="text-align: left">command</th><th>|</th><th style="text-align: center">reaction to unset bounding</th><th>|</th><th style="text-align: left">result</th></tr></thead><tbody>
+<tr><td style="text-align: left"><code>! runc run</code></td><td>|</td><td style="text-align: center">drop all bounding caps</td><td>|</td><td style="text-align: left">failure (👍)</td></tr>
+<tr><td style="text-align: left"><code>! youki exec</code></td><td>|</td><td style="text-align: center">drop all bounding caps</td><td>|</td><td style="text-align: left">failure (👍)</td></tr>
+<tr><td style="text-align: left"><code>! youki run</code></td><td>|</td><td style="text-align: center">don't touch bounding caps</td><td>|</td><td style="text-align: left">success (should not! 🚨)</td></tr>
+</tbody></table>
+<h1 id="what-are-capabilities-sets">What are capabilities sets?</h1>
+<p><strong>Physically</strong>, they are 5 64-bit bitmasks and each thread (not process) has a set of its own. So each thread carries 320 bits of its capabilities data.
+<a rel="external" href="https://github.com/torvalds/linux/blob/6f3ed7fec72fc8979b2a8c7219c0a9fcfc8d07b5/include/linux/cred.h#L126-L130">linux:/include/linux/cred.h#L126-L130</a></p>
+<pre class="giallo" style="color-scheme: light dark; color: light-dark(#24292E, #E1E4E8); background-color: light-dark(#FFFFFF, #24292E);"><code data-lang="c"><span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">126</span><span style="color: light-dark(#005CC5, #79B8FF);">kernel_cap_t</span><span>	cap_inheritable</span><span>;</span><span style="color: light-dark(#6A737D, #6A737D);"> /*</span><span style="color: light-dark(#6A737D, #6A737D);"> caps our children can inherit </span><span style="color: light-dark(#6A737D, #6A737D);">*/</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">127</span><span style="color: light-dark(#005CC5, #79B8FF);">kernel_cap_t</span><span>	cap_permitted</span><span>;</span><span style="color: light-dark(#6A737D, #6A737D);">	/*</span><span style="color: light-dark(#6A737D, #6A737D);"> caps we&#39;re permitted </span><span style="color: light-dark(#6A737D, #6A737D);">*/</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">128</span><span style="color: light-dark(#005CC5, #79B8FF);">kernel_cap_t</span><span>	cap_effective</span><span>;</span><span style="color: light-dark(#6A737D, #6A737D);">	/*</span><span style="color: light-dark(#6A737D, #6A737D);"> caps we can actually use </span><span style="color: light-dark(#6A737D, #6A737D);">*/</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">129</span><span style="color: light-dark(#005CC5, #79B8FF);">kernel_cap_t</span><span>	cap_bset</span><span>;</span><span style="color: light-dark(#6A737D, #6A737D);">	/*</span><span style="color: light-dark(#6A737D, #6A737D);"> capability bounding set </span><span style="color: light-dark(#6A737D, #6A737D);">*/</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">130</span><span style="color: light-dark(#005CC5, #79B8FF);">kernel_cap_t</span><span>	cap_ambient</span><span>;</span><span style="color: light-dark(#6A737D, #6A737D);">	/*</span><span style="color: light-dark(#6A737D, #6A737D);"> Ambient capability set </span><span style="color: light-dark(#6A737D, #6A737D);">*/</span></span></code></pre>
+<p><strong>Conceptually</strong>, they were introduced to Linux for more granular control over different privileges that historically were tightly coupled to the root user (uid=0).
+Thanks to capabilities, we can, for example, give a container's root process the privilege to kill other processes <strong>within</strong> the same container (<code>CAP_KILL</code>) without also giving it the right to mount host's file system and escape the container environment (<code>CAP_SYS_ADMIN</code>).
+This allows tools like <code>supervisord</code> <a rel="external" href="https://github.com/supervisor/supervisor">github:supervisor/supervisor</a> to orchestrate processes inside containers while keeping the host system safe.</p>
+<p><strong>Logically</strong>, they are sets of tokens that a thread (a task) can use to prove to the kernel that it is allowed to perform a privileged operation.
+On top of that, there are rules describing how these sets affect each other and how processes pass capabilities to their children.</p>
+<h1 id="what-is-the-bounding-capabilities-set">What is the bounding capabilities set?</h1>
+<p>Firstly, here's the formula for the permitted set after <code>execve()</code> call: <code>(thread_inheritable &amp; file_inheritable) | (file_permitted &amp; thread_bounding_set) | thread_ambient</code>.</p>
+<p>The bounding set acts as the upper hard limit for what capabilities a process can gain through the <code>file_permitted &amp; thread_bounding_set</code> term during <code>execve()</code>. Once a capability is removed from the bounding set, no subsequent <code>execve()</code> can reintroduce it via file permitted capabilities. The one exception is the inheritable path: if the capability was already in the thread's inheritable set before the bounding set was reduced, it can still enter permitted through <code>thread_inheritable &amp; file_inheritable</code> during <code>execve()</code>.</p>
+<p>The ambient path <code>thread_ambient</code> won't allow the new thread/process to get the dropped capability either because Linux enforces the invariant that a cap can only be in the ambient set if it's in both permitted and inheritable. Moreover, dropping a cap from the bounding set also clears the cap from the ambient set.</p>
+<h1 id="what-was-the-bug-in-youki">What was the bug in <code>youki</code>?</h1>
+<p>The actual bug is pretty simple to spot in the code <a rel="external" href="https://github.com/YawKar/youki/blob/ca29917af310ae2bee4c7c866cabffc79202fcb9/crates/libcontainer/src/capabilities.rs#L133-L141">youki:/crates/libcontainer/src/capabilities.rs#L133-L141</a>:</p>
+<pre class="giallo" style="color-scheme: light dark; color: light-dark(#24292E, #E1E4E8); background-color: light-dark(#FFFFFF, #24292E);"><code data-lang="rust"><span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">133</span><span style="color: light-dark(#6A737D, #6A737D);">///</span><span style="color: light-dark(#6A737D, #6A737D);"> Drop any extra granted capabilities, and reset to defaults which are in oci specification</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">134</span><span style="color: light-dark(#D73A49, #F97583);">pub</span><span style="color: light-dark(#D73A49, #F97583);"> fn</span><span style="color: light-dark(#6F42C1, #B392F0);"> drop_privileges</span><span>&lt;</span><span style="color: light-dark(#6F42C1, #B392F0);">S</span><span style="color: light-dark(#D73A49, #F97583);">:</span><span style="color: light-dark(#6F42C1, #B392F0);"> Syscall</span><span style="color: light-dark(#D73A49, #F97583);"> +</span><span style="color: light-dark(#D73A49, #F97583);"> ?</span><span style="color: light-dark(#6F42C1, #B392F0);">Sized</span><span>&gt;</span><span>(</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">135</span><span>  cs</span><span style="color: light-dark(#D73A49, #F97583);">:</span><span style="color: light-dark(#D73A49, #F97583);"> &amp;</span><span style="color: light-dark(#6F42C1, #B392F0);">LinuxCapabilities</span><span>,</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">136</span><span>  syscall</span><span style="color: light-dark(#D73A49, #F97583);">:</span><span style="color: light-dark(#D73A49, #F97583);"> &amp;</span><span style="color: light-dark(#6F42C1, #B392F0);">S</span><span>,</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">137</span><span>)</span><span style="color: light-dark(#D73A49, #F97583);"> -&gt;</span><span style="color: light-dark(#6F42C1, #B392F0);"> Result</span><span>&lt;</span><span>(</span><span>)</span><span>,</span><span style="color: light-dark(#6F42C1, #B392F0);"> SyscallError</span><span>&gt;</span><span> {</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">138</span><span style="color: light-dark(#6A737D, #6A737D);">  //</span><span style="color: light-dark(#6A737D, #6A737D);"> 👀 When bounding is unset `youki` skipped it.</span></span>
+<span class="giallo-l" style="background-color: light-dark(#F6F8FA, #2B3036);"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">139</span><span style="color: light-dark(#D73A49, #F97583);">  if</span><span style="color: light-dark(#D73A49, #F97583);"> let</span><span style="color: light-dark(#6F42C1, #B392F0);"> Some</span><span>(</span><span>bounding</span><span>)</span><span style="color: light-dark(#D73A49, #F97583);"> =</span><span> cs</span><span style="color: light-dark(#D73A49, #F97583);">.</span><span style="color: light-dark(#6F42C1, #B392F0);">bounding</span><span>(</span><span>)</span><span> {</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">140</span><span style="color: light-dark(#6F42C1, #B392F0);">    tracing</span><span style="color: light-dark(#D73A49, #F97583);">::</span><span style="color: light-dark(#6F42C1, #B392F0);">debug!</span><span>(</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span style="color: light-dark(#032F62, #9ECBFF);">dropping bounding capabilities to </span><span style="color: light-dark(#032F62, #9ECBFF);">{</span><span style="color: light-dark(#032F62, #9ECBFF);">:?</span><span style="color: light-dark(#032F62, #9ECBFF);">}</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span>,</span><span> bounding</span><span>)</span><span>;</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">141</span><span>    syscall</span><span style="color: light-dark(#D73A49, #F97583);">.</span><span style="color: light-dark(#6F42C1, #B392F0);">set_capability</span><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">CapSet</span><span style="color: light-dark(#D73A49, #F97583);">::</span><span style="color: light-dark(#6F42C1, #B392F0);">Bounding</span><span>,</span><span style="color: light-dark(#D73A49, #F97583);"> &amp;</span><span style="color: light-dark(#6F42C1, #B392F0);">to_set</span><span>(</span><span>bounding</span><span>)</span><span>)</span><span style="color: light-dark(#D73A49, #F97583);">?</span><span>;</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">142</span><span>  }</span></span></code></pre>
+<p>The solution is clear <a rel="external" href="https://github.com/YawKar/youki/blob/40cc9c1a0df87d4d2bc386ac0421473636d6fb01/crates/libcontainer/src/capabilities.rs#L133-L141">updated revision</a>:</p>
+<pre class="giallo" style="color-scheme: light dark; color: light-dark(#24292E, #E1E4E8); background-color: light-dark(#FFFFFF, #24292E);"><code data-lang="rust"><span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">133</span><span style="color: light-dark(#6A737D, #6A737D);">///</span><span style="color: light-dark(#6A737D, #6A737D);"> Drop any extra granted capabilities, and reset to defaults which are in oci specification</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">134</span><span style="color: light-dark(#D73A49, #F97583);">pub</span><span style="color: light-dark(#D73A49, #F97583);"> fn</span><span style="color: light-dark(#6F42C1, #B392F0);"> drop_privileges</span><span>&lt;</span><span style="color: light-dark(#6F42C1, #B392F0);">S</span><span style="color: light-dark(#D73A49, #F97583);">:</span><span style="color: light-dark(#6F42C1, #B392F0);"> Syscall</span><span style="color: light-dark(#D73A49, #F97583);"> +</span><span style="color: light-dark(#D73A49, #F97583);"> ?</span><span style="color: light-dark(#6F42C1, #B392F0);">Sized</span><span>&gt;</span><span>(</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">135</span><span>  cs</span><span style="color: light-dark(#D73A49, #F97583);">:</span><span style="color: light-dark(#D73A49, #F97583);"> &amp;</span><span style="color: light-dark(#6F42C1, #B392F0);">LinuxCapabilities</span><span>,</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">136</span><span>  syscall</span><span style="color: light-dark(#D73A49, #F97583);">:</span><span style="color: light-dark(#D73A49, #F97583);"> &amp;</span><span style="color: light-dark(#6F42C1, #B392F0);">S</span><span>,</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">137</span><span>)</span><span style="color: light-dark(#D73A49, #F97583);"> -&gt;</span><span style="color: light-dark(#6F42C1, #B392F0);"> Result</span><span>&lt;</span><span>(</span><span>)</span><span>,</span><span style="color: light-dark(#6F42C1, #B392F0);"> SyscallError</span><span>&gt;</span><span> {</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">138</span><span style="color: light-dark(#D73A49, #F97583);">  let</span><span> empty_caps</span><span style="color: light-dark(#D73A49, #F97583);"> =</span><span style="color: light-dark(#6F42C1, #B392F0);"> Default</span><span style="color: light-dark(#D73A49, #F97583);">::</span><span style="color: light-dark(#6F42C1, #B392F0);">default</span><span>(</span><span>)</span><span>;</span></span>
+<span class="giallo-l" style="background-color: light-dark(#F6F8FA, #2B3036);"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">139</span><span style="color: light-dark(#D73A49, #F97583);">  let</span><span> bounding</span><span style="color: light-dark(#D73A49, #F97583);"> =</span><span> cs</span><span style="color: light-dark(#D73A49, #F97583);">.</span><span style="color: light-dark(#6F42C1, #B392F0);">bounding</span><span>(</span><span>)</span><span style="color: light-dark(#D73A49, #F97583);">.</span><span style="color: light-dark(#6F42C1, #B392F0);">as_ref</span><span>(</span><span>)</span><span style="color: light-dark(#D73A49, #F97583);">.</span><span style="color: light-dark(#6F42C1, #B392F0);">unwrap_or</span><span>(</span><span style="color: light-dark(#D73A49, #F97583);">&amp;</span><span>empty_caps</span><span>)</span><span>;</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">140</span><span style="color: light-dark(#6F42C1, #B392F0);">  tracing</span><span style="color: light-dark(#D73A49, #F97583);">::</span><span style="color: light-dark(#6F42C1, #B392F0);">debug!</span><span>(</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span style="color: light-dark(#032F62, #9ECBFF);">dropping bounding capabilities to </span><span style="color: light-dark(#032F62, #9ECBFF);">{</span><span style="color: light-dark(#032F62, #9ECBFF);">:?</span><span style="color: light-dark(#032F62, #9ECBFF);">}</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span>,</span><span> bounding</span><span>)</span><span>;</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">141</span><span>  syscall</span><span style="color: light-dark(#D73A49, #F97583);">.</span><span style="color: light-dark(#6F42C1, #B392F0);">set_capability</span><span>(</span><span style="color: light-dark(#6F42C1, #B392F0);">CapSet</span><span style="color: light-dark(#D73A49, #F97583);">::</span><span style="color: light-dark(#6F42C1, #B392F0);">Bounding</span><span>,</span><span style="color: light-dark(#D73A49, #F97583);"> &amp;</span><span style="color: light-dark(#6F42C1, #B392F0);">to_set</span><span>(</span><span>bounding</span><span>)</span><span>)</span><span style="color: light-dark(#D73A49, #F97583);">?</span><span>;</span></span></code></pre><h1 id="what-about-runc">What about <code>runc</code>?</h1>
+<p>They do it mostly the same, except for the ordering of user setup and capability manipulation. <a rel="external" href="https://github.com/opencontainers/runc/blob/d0aeb9e3e22e02eec9f9a42416267a4f358cc571/libcontainer/init_linux.go#L340-L366">runc:/libcontainer/init_linux.go#L340-L366</a></p>
+<pre class="giallo" style="color-scheme: light dark; color: light-dark(#24292E, #E1E4E8); background-color: light-dark(#FFFFFF, #24292E);"><code data-lang="go"><span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">340</span><span style="color: light-dark(#6A737D, #6A737D);">//</span><span style="color: light-dark(#6A737D, #6A737D);"> drop capabilities in bounding set before changing user</span></span>
+<span class="giallo-l" style="background-color: light-dark(#F6F8FA, #2B3036);"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">341</span><span style="color: light-dark(#D73A49, #F97583);">if</span><span> err</span><span style="color: light-dark(#D73A49, #F97583);"> :=</span><span> w</span><span>.</span><span style="color: light-dark(#6F42C1, #B392F0);">ApplyBoundingSet</span><span>(</span><span>)</span><span>;</span><span> err</span><span style="color: light-dark(#D73A49, #F97583);"> !=</span><span style="color: light-dark(#005CC5, #79B8FF);"> nil</span><span> {</span></span>
+<span class="giallo-l" style="background-color: light-dark(#F6F8FA, #2B3036);"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">342</span><span style="color: light-dark(#D73A49, #F97583);">  return</span><span> fmt</span><span>.</span><span style="color: light-dark(#6F42C1, #B392F0);">Errorf</span><span>(</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span style="color: light-dark(#032F62, #9ECBFF);">unable to apply bounding set: </span><span style="color: light-dark(#005CC5, #79B8FF);">%w</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span>,</span><span> err</span><span>)</span></span>
+<span class="giallo-l" style="background-color: light-dark(#F6F8FA, #2B3036);"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">343</span><span>}</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">344</span><span style="color: light-dark(#6A737D, #6A737D);">//</span><span style="color: light-dark(#6A737D, #6A737D);"> preserve existing capabilities while we change users</span></span>
+<span class="giallo-l" style="background-color: light-dark(#F6F8FA, #2B3036);"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">345</span><span style="color: light-dark(#D73A49, #F97583);">if</span><span> err</span><span style="color: light-dark(#D73A49, #F97583);"> :=</span><span> system</span><span>.</span><span style="color: light-dark(#6F42C1, #B392F0);">SetKeepCaps</span><span>(</span><span>)</span><span>;</span><span> err</span><span style="color: light-dark(#D73A49, #F97583);"> !=</span><span style="color: light-dark(#005CC5, #79B8FF);"> nil</span><span> {</span></span>
+<span class="giallo-l" style="background-color: light-dark(#F6F8FA, #2B3036);"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">346</span><span style="color: light-dark(#D73A49, #F97583);">  return</span><span> fmt</span><span>.</span><span style="color: light-dark(#6F42C1, #B392F0);">Errorf</span><span>(</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span style="color: light-dark(#032F62, #9ECBFF);">unable to set keep caps: </span><span style="color: light-dark(#005CC5, #79B8FF);">%w</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span>,</span><span> err</span><span>)</span></span>
+<span class="giallo-l" style="background-color: light-dark(#F6F8FA, #2B3036);"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">347</span><span>}</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">348</span><span style="color: light-dark(#D73A49, #F97583);">if</span><span> err</span><span style="color: light-dark(#D73A49, #F97583);"> :=</span><span style="color: light-dark(#6F42C1, #B392F0);"> setupUser</span><span>(</span><span>config</span><span>)</span><span>;</span><span> err</span><span style="color: light-dark(#D73A49, #F97583);"> !=</span><span style="color: light-dark(#005CC5, #79B8FF);"> nil</span><span> {</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">349</span><span style="color: light-dark(#D73A49, #F97583);">  return</span><span> fmt</span><span>.</span><span style="color: light-dark(#6F42C1, #B392F0);">Errorf</span><span>(</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span style="color: light-dark(#032F62, #9ECBFF);">unable to setup user: </span><span style="color: light-dark(#005CC5, #79B8FF);">%w</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span>,</span><span> err</span><span>)</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">350</span><span>}</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">351</span><span style="color: light-dark(#6A737D, #6A737D);">//</span><span style="color: light-dark(#6A737D, #6A737D);"> Change working directory AFTER the user has been set up, if we haven&#39;t done it yet.</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">352</span><span style="color: light-dark(#D73A49, #F97583);">if</span><span> doChdir</span><span> {</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">353</span><span style="color: light-dark(#D73A49, #F97583);">  if</span><span> err</span><span style="color: light-dark(#D73A49, #F97583);"> :=</span><span> unix</span><span>.</span><span style="color: light-dark(#6F42C1, #B392F0);">Chdir</span><span>(</span><span>config</span><span>.</span><span>Cwd</span><span>)</span><span>;</span><span> err</span><span style="color: light-dark(#D73A49, #F97583);"> !=</span><span style="color: light-dark(#005CC5, #79B8FF);"> nil</span><span> {</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">354</span><span style="color: light-dark(#D73A49, #F97583);">    return</span><span> fmt</span><span>.</span><span style="color: light-dark(#6F42C1, #B392F0);">Errorf</span><span>(</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span style="color: light-dark(#032F62, #9ECBFF);">chdir to cwd (</span><span style="color: light-dark(#005CC5, #79B8FF);">%q</span><span style="color: light-dark(#032F62, #9ECBFF);">) set in config.json failed: </span><span style="color: light-dark(#005CC5, #79B8FF);">%w</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span>,</span><span> config</span><span>.</span><span>Cwd</span><span>,</span><span> err</span><span>)</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">355</span><span>  }</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">356</span><span>}</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">357</span><span style="color: light-dark(#6A737D, #6A737D);">//</span><span style="color: light-dark(#6A737D, #6A737D);"> Make sure our final working directory is inside the container.</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">358</span><span style="color: light-dark(#D73A49, #F97583);">if</span><span> err</span><span style="color: light-dark(#D73A49, #F97583);"> :=</span><span style="color: light-dark(#6F42C1, #B392F0);"> verifyCwd</span><span>(</span><span>)</span><span>;</span><span> err</span><span style="color: light-dark(#D73A49, #F97583);"> !=</span><span style="color: light-dark(#005CC5, #79B8FF);"> nil</span><span> {</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">359</span><span style="color: light-dark(#D73A49, #F97583);">  return</span><span> err</span></span>
+<span class="giallo-l"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">360</span><span>}</span></span>
+<span class="giallo-l" style="background-color: light-dark(#F6F8FA, #2B3036);"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">361</span><span style="color: light-dark(#D73A49, #F97583);">if</span><span> err</span><span style="color: light-dark(#D73A49, #F97583);"> :=</span><span> system</span><span>.</span><span style="color: light-dark(#6F42C1, #B392F0);">ClearKeepCaps</span><span>(</span><span>)</span><span>;</span><span> err</span><span style="color: light-dark(#D73A49, #F97583);"> !=</span><span style="color: light-dark(#005CC5, #79B8FF);"> nil</span><span> {</span></span>
+<span class="giallo-l" style="background-color: light-dark(#F6F8FA, #2B3036);"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">362</span><span style="color: light-dark(#D73A49, #F97583);">  return</span><span> fmt</span><span>.</span><span style="color: light-dark(#6F42C1, #B392F0);">Errorf</span><span>(</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span style="color: light-dark(#032F62, #9ECBFF);">unable to clear keep caps: </span><span style="color: light-dark(#005CC5, #79B8FF);">%w</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span>,</span><span> err</span><span>)</span></span>
+<span class="giallo-l" style="background-color: light-dark(#F6F8FA, #2B3036);"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">363</span><span>}</span></span>
+<span class="giallo-l" style="background-color: light-dark(#F6F8FA, #2B3036);"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">364</span><span style="color: light-dark(#D73A49, #F97583);">if</span><span> err</span><span style="color: light-dark(#D73A49, #F97583);"> :=</span><span> w</span><span>.</span><span style="color: light-dark(#6F42C1, #B392F0);">ApplyCaps</span><span>(</span><span>)</span><span>;</span><span> err</span><span style="color: light-dark(#D73A49, #F97583);"> !=</span><span style="color: light-dark(#005CC5, #79B8FF);"> nil</span><span> {</span></span>
+<span class="giallo-l" style="background-color: light-dark(#F6F8FA, #2B3036);"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">365</span><span style="color: light-dark(#D73A49, #F97583);">  return</span><span> fmt</span><span>.</span><span style="color: light-dark(#6F42C1, #B392F0);">Errorf</span><span>(</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span style="color: light-dark(#032F62, #9ECBFF);">unable to apply caps: </span><span style="color: light-dark(#005CC5, #79B8FF);">%w</span><span style="color: light-dark(#032F62, #9ECBFF);">&quot;</span><span>,</span><span> err</span><span>)</span></span>
+<span class="giallo-l" style="background-color: light-dark(#F6F8FA, #2B3036);"><span aria-hidden="true" class="giallo-ln" style="color: light-dark(#1B1F234D, #444D56);">366</span><span>}</span></span></code></pre><h1 id="further-reading">Further reading</h1>
+<ul>
+<li><a rel="external" href="https://docs.kernel.org/security/credentials.html#types-of-credentials">The Linux Kernel documentation: Credentials in Linux &gt; Types of Credentials</a></li>
+<li><a rel="external" href="https://www.kernel.org/pub/linux/libs/security/linux-privs/kernel-2.2/capfaq-0.2.txt">Kernel Archive: Linux Capabilities FAQ 0.2</a></li>
+<li><a rel="external" href="https://www.kernel.org/pub/linux/libs/security/linux-privs/old/doc/linux-privs.html/linux-privs.html">Kernel Archive: Linux-Privs (DRAFT v0.10 1997/4/21)</a></li>
+</ul>
+
+  
+  
+  <footer class="s">
+    Tags: <a href='https://yawkar.github.io/tags/youki'>youki</a>, <a href='https://yawkar.github.io/tags/rust'>rust</a>, <a href='https://yawkar.github.io/tags/containers'>containers</a>, <a href='https://yawkar.github.io/tags/linux'>linux</a>
+  </footer>
+  
+  
+</article>
+</main>
+    <hr>
+    <footer class="s">
+        <span>© yawkar&#x27;s blog 2026</span>
+        <span><img src="/icons/rss.svg" alt=""> Feeds: <a href="https://yawkar.github.io/atom.xml">Atom</a> · <a href="https://yawkar.github.io/rss.xml">RSS</a></span>
+    </footer>
+    
+    
+    
+    <script>document.querySelectorAll('article img[srcset]').forEach(i=>{if(i.closest('a'))return;i.style.cursor='pointer';i.onclick=()=>{let d=document.createElement('div'),s=i.srcset.split(',').pop().trim().split(' ')[0];d.className='lb';d.innerHTML='<img src="'+s+'">';document.body.style.overflow='hidden';d.onclick=()=>{d.remove();document.body.style.overflow=''};document.body.appendChild(d)}})</script>
+    </body>
+</html>
